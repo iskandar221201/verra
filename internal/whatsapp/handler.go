@@ -7,6 +7,7 @@ import (
 	"go.mau.fi/whatsmeow/types/events"
 )
 
+// RegisterHandlers sets up the whatsmeow event handler.
 func (w *WhatsAppClient) RegisterHandlers() {
 	w.Client.AddEventHandler(func(evt interface{}) {
 		switch v := evt.(type) {
@@ -20,20 +21,29 @@ func (w *WhatsAppClient) RegisterHandlers() {
 	})
 }
 
+// handleIncomingMessage processes incoming WhatsApp messages.
 func (w *WhatsAppClient) handleIncomingMessage(evt *events.Message) {
-	// Only handle texts for now
+	// Skip messages from self
+	if evt.Info.IsFromMe {
+		return
+	}
+
+	// Extract text content
 	text := evt.Message.GetConversation()
 	if text == "" {
 		text = evt.Message.GetExtendedTextMessage().GetText()
 	}
 
 	if text != "" {
-		fmt.Printf("Received message from %s: %s\n", evt.Info.Sender.String(), text)
+		senderJID := evt.Info.Sender.String()
+		pushName := evt.Info.PushName
+		msgID := evt.Info.ID
 
-		// Map whatsmeow event to our DTO/Internal event if needed
-		// runtime.EventsEmit(w.ctx, "verra:new_message", map[string]interface{}{
-		//     "sender": evt.Info.Sender.String(),
-		//     "text":   text,
-		// })
+		fmt.Printf("Received message from %s (%s): %s\n", pushName, senderJID, text)
+
+		// Delegate to the conversation service handler if set
+		if w.messageHandler != nil {
+			w.messageHandler(senderJID, pushName, msgID, text)
+		}
 	}
 }

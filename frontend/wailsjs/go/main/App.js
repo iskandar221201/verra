@@ -18,6 +18,10 @@ export function AgentSendMessage(arg1, arg2) {
   return window['go']['main']['App']['AgentSendMessage'](arg1, arg2);
 }
 
+export function AgentSwitchToAI(arg1) {
+  return window['go']['main']['App']['AgentSwitchToAI'](arg1);
+}
+
 export function DeleteAPIKey(arg1) {
   return window['go']['main']['App']['DeleteAPIKey'](arg1);
 }
@@ -92,6 +96,10 @@ export function ImportNoteFromFile(arg1, arg2) {
 
 export function ImportProductFromCSV(arg1) {
   return window['go']['main']['App']['ImportProductFromCSV'](arg1);
+}
+
+export function InitWA() {
+  return window['go']['main']['App']['InitWA']();
 }
 
 export function ReorderFAQs(arg1) {

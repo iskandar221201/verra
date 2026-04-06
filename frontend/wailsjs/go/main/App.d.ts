@@ -10,6 +10,8 @@ export function AgentResolveConversation(arg1:string):Promise<void>;
 
 export function AgentSendMessage(arg1:string,arg2:string):Promise<void>;
 
+export function AgentSwitchToAI(arg1:string):Promise<void>;
+
 export function DeleteAPIKey(arg1:number):Promise<void>;
 
 export function DeleteFAQ(arg1:number):Promise<void>;
@@ -47,6 +49,8 @@ export function ImportFAQFromCSV(arg1:string):Promise<number>;
 export function ImportNoteFromFile(arg1:string,arg2:Array<number>):Promise<void>;
 
 export function ImportProductFromCSV(arg1:string):Promise<number>;
+
+export function InitWA():Promise<void>;
 
 export function ReorderFAQs(arg1:Array<number>):Promise<void>;
 
