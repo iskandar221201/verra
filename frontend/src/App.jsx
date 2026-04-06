@@ -1,25 +1,30 @@
-import {useState} from 'react';
+import { useState, useEffect } from 'react';
 import logo from './assets/images/logo-universal.png';
 import './App.css';
-import {Greet} from "../wailsjs/go/main/App";
+import { GetWAStatus } from "../wailsjs/go/main/App";
+import { EventsOn } from "../wailsjs/runtime/runtime";
 
 function App() {
-    const [resultText, setResultText] = useState("Please enter your name below 👇");
-    const [name, setName] = useState('');
-    const updateName = (e) => setName(e.target.value);
-    const updateResultText = (result) => setResultText(result);
+    const [status, setStatus] = useState("disconnected");
 
-    function greet() {
-        Greet(name).then(updateResultText);
-    }
+    useEffect(() => {
+        GetWAStatus().then(res => setStatus(res.state));
+
+        const unlisten = EventsOn("verra:wa_status", (s) => {
+            setStatus(s);
+        });
+
+        return () => unlisten();
+    }, []);
 
     return (
         <div id="App">
-            <img src={logo} id="logo" alt="logo"/>
-            <div id="result" className="result">{resultText}</div>
-            <div id="input" className="input-box">
-                <input id="name" className="input" onChange={updateName} autoComplete="off" name="input" type="text"/>
-                <button className="btn" onClick={greet}>Greet</button>
+            <img src={logo} id="logo" alt="logo" />
+            <div id="result" className="result">
+                WhatsApp Status: <span style={{ color: status === 'connected' ? '#22C55E' : '#F59E0B' }}>{status}</span>
+            </div>
+            <div className="input-box">
+                <p>Verra AI Project Initialized</p>
             </div>
         </div>
     )

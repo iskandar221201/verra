@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"verra/internal/dto"
+	"verra/internal/whatsapp"
 )
 
 // App struct
 type App struct {
-	ctx context.Context
+	ctx      context.Context
+	waClient *whatsapp.WhatsAppClient
 }
 
 // NewApp creates a new App application struct
@@ -19,6 +21,9 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.waClient = whatsapp.NewWhatsAppClient(ctx)
+	// Auto-init if possible in background
+	go a.waClient.Init()
 }
 
 // --- Conversation ---
@@ -36,7 +41,7 @@ func (a *App) AgentClaimHandover(convID string) error {
 }
 
 func (a *App) AgentSendMessage(convID string, text string) error {
-	return nil
+	return a.waClient.SendText(convID, text)
 }
 
 func (a *App) AgentResolveConversation(convID string) error {
@@ -46,14 +51,16 @@ func (a *App) AgentResolveConversation(convID string) error {
 // --- WhatsApp ---
 
 func (a *App) GetWAStatus() dto.WAStatus {
-	return dto.WAStatus{State: "disconnected"}
+	return a.waClient.GetStatus()
 }
 
 func (a *App) GetQRCode() string {
+	// QR is handled via events in Init()
 	return ""
 }
 
 func (a *App) DisconnectWA() error {
+	a.waClient.Disconnect()
 	return nil
 }
 
