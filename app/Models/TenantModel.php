@@ -2,8 +2,12 @@
 
 namespace App\Models;
 
+use App\Traits\UuidTrait;
+
 class TenantModel extends \CodeIgniter\Model
 {
+    use UuidTrait;
+
     protected $table = 'tenants';
     protected $primaryKey = 'id';
     protected $useAutoIncrement = true;
@@ -20,23 +24,4 @@ class TenantModel extends \CodeIgniter\Model
 
     // Callbacks
     protected $beforeInsert = ['generateUuid'];
-
-    protected function generateUuid(array $data)
-    {
-        if (!isset($data['data']['uuid'])) {
-            $data['data']['uuid'] = sprintf(
-                '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-                mt_rand(0, 0xffff),
-                mt_rand(0, 0xffff),
-                mt_rand(0, 0xffff),
-                mt_rand(0, 0x0fff) | 0x4000,
-                mt_rand(0, 0x3fff) | 0x8000,
-                mt_rand(0, 0xffff),
-                mt_rand(0, 0xffff),
-                mt_rand(0, 0xffff)
-            );
-        }
-
-        return $data;
-    }
 }
