@@ -27,7 +27,7 @@ class TenantApiKeyModel extends Model
     // Dates
     protected $useTimestamps = true;
     protected $createdField = 'created_at';
-    protected $updatedField = 'updated_at';
+    protected $updatedField = '';
 
     // Callbacks
     protected $beforeInsert = ['setTenantId', 'encryptApiKey'];
