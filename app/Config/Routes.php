@@ -67,4 +67,18 @@ $routes->group('', ['filter' => ['session', 'tenant']], static function ($routes
     $routes->post('keywords/store', 'Tenant\KeywordController::store');
     $routes->get('keywords/delete/(:num)', 'Tenant\KeywordController::delete/$1');
     $routes->get('keywords/toggle/(:num)', 'Tenant\KeywordController::toggleActive/$1');
+
+    // Handover Management
+    $routes->get('handover', 'Tenant\HandoverController::index');
+    $routes->get('handover/detail/(:num)', 'Tenant\HandoverController::detail/$1');
+    $routes->get('handover/chat', 'Tenant\HandoverController::chat');
+
+    // Agent Chat Actions
+    $routes->post('agent-chat/(:num)/claim', 'Tenant\AgentChatController::claim/$1');
+    $routes->post('agent-chat/(:num)/send', 'Tenant\AgentChatController::send/$1');
+    $routes->post('agent-chat/(:num)/return-to-ai', 'Tenant\AgentChatController::returnToAi/$1');
+    $routes->post('agent-chat/(:num)/close', 'Tenant\AgentChatController::close/$1');
+
+    // SSE Endpoint
+    $routes->get('sse/(:num)/(:segment)', 'Tenant\SseController::stream/$1/$2');
 });
