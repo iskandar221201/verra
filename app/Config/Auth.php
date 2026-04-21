@@ -36,9 +36,9 @@ class Auth extends ShieldAuth
      */
 
     // Constants for Record Login Attempts. Do not change.
-    public const RECORD_LOGIN_ATTEMPT_NONE    = 0; // Do not record at all
+    public const RECORD_LOGIN_ATTEMPT_NONE = 0; // Do not record at all
     public const RECORD_LOGIN_ATTEMPT_FAILURE = 1; // Record only failures
-    public const RECORD_LOGIN_ATTEMPT_ALL     = 2; // Record all login attempts
+    public const RECORD_LOGIN_ATTEMPT_ALL = 2; // Record all login attempts
 
     /**
      * --------------------------------------------------------------------
@@ -46,17 +46,17 @@ class Auth extends ShieldAuth
      * --------------------------------------------------------------------
      */
     public array $views = [
-        'login'                       => '\CodeIgniter\Shield\Views\login',
-        'register'                    => '\CodeIgniter\Shield\Views\register',
-        'layout'                      => '\CodeIgniter\Shield\Views\layout',
-        'action_email_2fa'            => '\CodeIgniter\Shield\Views\email_2fa_show',
-        'action_email_2fa_verify'     => '\CodeIgniter\Shield\Views\email_2fa_verify',
-        'action_email_2fa_email'      => '\CodeIgniter\Shield\Views\Email\email_2fa_email',
-        'action_email_activate_show'  => '\CodeIgniter\Shield\Views\email_activate_show',
+        'login' => '\CodeIgniter\Shield\Views\login',
+        'register' => '\CodeIgniter\Shield\Views\register',
+        'layout' => '\CodeIgniter\Shield\Views\layout',
+        'action_email_2fa' => '\CodeIgniter\Shield\Views\email_2fa_show',
+        'action_email_2fa_verify' => '\CodeIgniter\Shield\Views\email_2fa_verify',
+        'action_email_2fa_email' => '\CodeIgniter\Shield\Views\Email\email_2fa_email',
+        'action_email_activate_show' => '\CodeIgniter\Shield\Views\email_activate_show',
         'action_email_activate_email' => '\CodeIgniter\Shield\Views\Email\email_activate_email',
-        'magic-link-login'            => '\CodeIgniter\Shield\Views\magic_link_form',
-        'magic-link-message'          => '\CodeIgniter\Shield\Views\magic_link_message',
-        'magic-link-email'            => '\CodeIgniter\Shield\Views\Email\magic_link_email',
+        'magic-link-login' => '\CodeIgniter\Shield\Views\magic_link_form',
+        'magic-link-message' => '\CodeIgniter\Shield\Views\magic_link_message',
+        'magic-link-email' => '\CodeIgniter\Shield\Views\Email\magic_link_email',
     ];
 
     /**
@@ -74,12 +74,12 @@ class Auth extends ShieldAuth
      * to apply any logic you may need.
      */
     public array $redirects = [
-        'register'          => '/',
-        'login'             => '/',
-        'logout'            => 'login',
-        'force_reset'       => '/',
+        'register' => '/',
+        'login' => 'dashboard',
+        'logout' => 'login',
+        'force_reset' => '/',
         'permission_denied' => '/',
-        'group_denied'      => '/',
+        'group_denied' => '/',
     ];
 
     /**
@@ -104,7 +104,7 @@ class Auth extends ShieldAuth
      */
     public array $actions = [
         'register' => null,
-        'login'    => null,
+        'login' => null,
     ];
 
     /**
@@ -119,9 +119,9 @@ class Auth extends ShieldAuth
      * @var array<string, class-string<AuthenticatorInterface>>
      */
     public array $authenticators = [
-        'tokens'  => AccessTokens::class,
+        'tokens' => AccessTokens::class,
         'session' => Session::class,
-        'hmac'    => HmacSha256::class,
+        'hmac' => HmacSha256::class,
         // 'jwt'     => JWT::class,
     ];
 
@@ -207,10 +207,10 @@ class Auth extends ShieldAuth
      * @var array<string, bool|int|string>
      */
     public array $sessionConfig = [
-        'field'              => 'user',
-        'allowRemembering'   => true,
+        'field' => 'user',
+        'allowRemembering' => true,
         'rememberCookieName' => 'remember',
-        'rememberLength'     => 30 * DAY,
+        'rememberLength' => 30 * DAY,
     ];
 
     /**
@@ -361,7 +361,7 @@ class Auth extends ShieldAuth
     public int $hashMemoryCost = 65536; // PASSWORD_ARGON2_DEFAULT_MEMORY_COST;
 
     public int $hashTimeCost = 4;   // PASSWORD_ARGON2_DEFAULT_TIME_COST;
-    public int $hashThreads  = 1;   // PASSWORD_ARGON2_DEFAULT_THREADS;
+    public int $hashThreads = 1;   // PASSWORD_ARGON2_DEFAULT_THREADS;
 
     /**
      * --------------------------------------------------------------------
@@ -412,12 +412,12 @@ class Auth extends ShieldAuth
      * @var array<string, string>
      */
     public array $tables = [
-        'users'             => 'users',
-        'identities'        => 'auth_identities',
-        'logins'            => 'auth_logins',
-        'token_logins'      => 'auth_token_logins',
-        'remember_tokens'   => 'auth_remember_tokens',
-        'groups_users'      => 'auth_groups_users',
+        'users' => 'users',
+        'identities' => 'auth_identities',
+        'logins' => 'auth_logins',
+        'token_logins' => 'auth_token_logins',
+        'remember_tokens' => 'auth_remember_tokens',
+        'groups_users' => 'auth_groups_users',
         'permissions_users' => 'auth_permissions_users',
     ];
 
@@ -442,7 +442,7 @@ class Auth extends ShieldAuth
     public function loginRedirect(): string
     {
         $session = session();
-        $url     = $session->getTempdata('beforeLoginUrl') ?? setting('Auth.redirects')['login'];
+        $url = $session->getTempdata('beforeLoginUrl') ?? setting('Auth.redirects')['login'];
 
         return $this->getUrl($url);
     }
@@ -513,8 +513,8 @@ class Auth extends ShieldAuth
     {
         return match (true) {
             str_starts_with($url, 'http://') || str_starts_with($url, 'https://') => $url,
-            route_to($url) !== false                                              => rtrim(url_to($url), '/ '),
-            default                                                               => rtrim(site_url($url), '/ '),
+            route_to($url) !== false => rtrim(url_to($url), '/ '),
+            default => rtrim(site_url($url), '/ '),
         };
     }
 }
