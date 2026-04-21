@@ -30,4 +30,12 @@ $routes->group('superadmin', ['filter' => ['session', 'permission:tenants.read']
 // Tenant Routes
 $routes->group('', ['filter' => ['session', 'tenant']], static function ($routes) {
     $routes->get('dashboard', 'Tenant\DashboardController::index');
+
+    // WA Channels
+    $routes->get('channels', 'Tenant\ChannelController::index');
+    $routes->get('channels/create', 'Tenant\ChannelController::create');
+    $routes->post('channels/store', 'Tenant\ChannelController::store');
+    $routes->get('channels/edit/(:num)', 'Tenant\ChannelController::edit/$1');
+    $routes->post('channels/update/(:num)', 'Tenant\ChannelController::update/$1');
+    $routes->get('channels/delete/(:num)', 'Tenant\ChannelController::delete/$1');
 });
