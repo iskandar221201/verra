@@ -226,11 +226,6 @@ class WebhookProcessorService
      */
     private function insertSseEvent(int $tenantId, int $channelId, string $waNumber, string $eventType, array $payload): void
     {
-        // Only insert if SseEventModel class exists (may not be created yet)
-        if (!class_exists('App\Models\SseEventModel')) {
-            return;
-        }
-
         try {
             $sseModel = new \App\Models\SseEventModel();
             $sseModel->insert([
