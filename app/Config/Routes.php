@@ -7,6 +7,9 @@ use CodeIgniter\Router\RouteCollection;
  */
 $routes->get('/', 'Home::index');
 
+// Webhook Route (public, no auth)
+$routes->post('webhook/(:segment)', 'WebhookController::receive/$1');
+
 // Auth Routes override
 $routes->group('', ['namespace' => 'App\Controllers\Auth'], static function ($routes) {
     $routes->get('login', 'LoginController::loginView');
