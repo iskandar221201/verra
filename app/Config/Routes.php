@@ -79,6 +79,14 @@ $routes->group('', ['filter' => ['session', 'tenant']], static function ($routes
     $routes->post('agent-chat/(:num)/return-to-ai', 'Tenant\AgentChatController::returnToAi/$1');
     $routes->post('agent-chat/(:num)/close', 'Tenant\AgentChatController::close/$1');
 
+    // User Management
+    $routes->get('users', 'Tenant\UserController::index');
+    $routes->get('users/create', 'Tenant\UserController::create');
+    $routes->post('users/store', 'Tenant\UserController::store');
+    $routes->get('users/edit/(:num)', 'Tenant\UserController::edit/$1');
+    $routes->post('users/update/(:num)', 'Tenant\UserController::update/$1');
+    $routes->get('users/toggle/(:num)', 'Tenant\UserController::toggleActive/$1');
+
     // Conversations
     $routes->get('conversations', 'Tenant\ConversationController::index');
     $routes->get('conversations/show/(:num)/(:segment)', 'Tenant\ConversationController::show/$1/$2');
