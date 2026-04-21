@@ -38,4 +38,15 @@ $routes->group('', ['filter' => ['session', 'tenant']], static function ($routes
     $routes->get('channels/edit/(:num)', 'Tenant\ChannelController::edit/$1');
     $routes->post('channels/update/(:num)', 'Tenant\ChannelController::update/$1');
     $routes->get('channels/delete/(:num)', 'Tenant\ChannelController::delete/$1');
+
+    // AI Configuration
+    $routes->get('config', 'Tenant\ConfigController::index');
+    $routes->post('config/update', 'Tenant\ConfigController::update');
+
+    // API Keys
+    $routes->get('api-keys', 'Tenant\ApiKeyController::index');
+    $routes->post('api-keys/store', 'Tenant\ApiKeyController::store');
+    $routes->post('api-keys/update/(:num)', 'Tenant\ApiKeyController::update/$1');
+    $routes->get('api-keys/delete/(:num)', 'Tenant\ApiKeyController::delete/$1');
+    $routes->post('api-keys/update-priority', 'Tenant\ApiKeyController::updatePriority');
 });
