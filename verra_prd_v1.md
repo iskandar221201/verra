@@ -179,14 +179,32 @@ CREATE TABLE tenant_configs (
     id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     tenant_id       INT UNSIGNED NOT NULL UNIQUE,
     ai_provider     ENUM('gemini', 'grok') DEFAULT 'gemini',
-    gemini_api_key  TEXT NULL,
     gemini_model    VARCHAR(100) DEFAULT 'gemini-1.5-flash',
-    grok_api_key    TEXT NULL,
     grok_model      VARCHAR(100) DEFAULT 'grok-beta',
     system_prompt   TEXT NULL COMMENT 'Custom system prompt untuk AI. Akan digabung dengan KB.',
     max_history     TINYINT UNSIGNED DEFAULT 10 COMMENT 'Jumlah turn history yang dikirim ke AI',
     updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_tenant_id (tenant_id)
+);
+```
+> API key tidak disimpan di sini — disimpan di tabel `tenant_api_keys` yang mendukung multiple key per provider.
+
+### 5.3.1 Tenant API Keys
+Menyimpan multiple API key per provider per tenant, dengan urutan prioritas.
+```sql
+CREATE TABLE tenant_api_keys (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    tenant_id   INT UNSIGNED NOT NULL,
+    provider    ENUM('gemini', 'grok') NOT NULL,
+    label       VARCHAR(100) NOT NULL COMMENT 'Nama key, misal: Key Utama, Key Backup 1',
+    api_key     TEXT NOT NULL COMMENT 'Disimpan terenkripsi',
+    priority    TINYINT UNSIGNED DEFAULT 1 COMMENT 'Urutan prioritas. 1 = tertinggi, dipakai duluan',
+    is_active   TINYINT(1) DEFAULT 1,
+    last_used_at    DATETIME NULL,
+    last_error_at   DATETIME NULL,
+    last_error_msg  VARCHAR(255) NULL,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_tenant_provider (tenant_id, provider, is_active, priority)
 );
 ```
 
@@ -324,6 +342,7 @@ app/
 │   ├── TenantModel.php
 │   ├── WaChannelModel.php
 │   ├── TenantConfigModel.php
+│   ├── TenantApiKeyModel.php
 │   ├── KnowledgeBaseModel.php
 │   ├── ConversationModel.php
 │   ├── HandoverLogModel.php
@@ -377,6 +396,8 @@ app/
         │   └── edit.php
         ├── config/
         │   └── index.php
+        ├── api_keys/
+        │   └── index.php       # CRUD multi key per provider + atur prioritas
         ├── keywords/
         │   └── index.php
         ├── users/
@@ -729,27 +750,55 @@ Halaman ini adalah **live chat interface** mirip WhatsApp Web:
 - Input area muncul hanya jika agent adalah claimed_by yang aktif
 - SSE subscribe otomatis saat halaman dibuka, disconnect saat halaman ditutup
 
-AiService harus mengabstraksi perbedaan Gemini dan Grok sehingga WebhookProcessorService tidak perlu tahu provider yang aktif.
+---
 
-### Interface Logika
+## 10. AiService — Abstraksi Provider & Key Rotation
+
+AiService mengabstraksi perbedaan Gemini dan Grok sekaligus menangani rotasi API key otomatis. WebhookProcessorService tidak perlu tahu provider maupun key mana yang aktif.
+
+### 10.1 Interface Logika
 ```php
-// AiService::chat(array $config, string $systemPrompt, array $messages): string
-// $config = row dari tenant_configs
-// $messages = array of ['role' => 'user'|'assistant', 'content' => '...']
+// AiService::chat(int $tenantId, string $systemPrompt, array $messages): string
 // return: string response teks dari AI
+// throws: Exception jika semua key habis / gagal semua
 ```
 
-### Gemini API
+### 10.2 Algoritma Key Rotation
+
+```
+1. Ambil semua API key milik tenant untuk provider aktif:
+   SELECT * FROM tenant_api_keys
+   WHERE tenant_id = ? AND provider = ? AND is_active = 1
+   ORDER BY priority ASC
+
+2. Iterasi key dari prioritas tertinggi (priority terkecil):
+   UNTUK SETIAP key:
+     a. Coba hit AI provider dengan key ini
+     b. Jika SUKSES:
+        - Update last_used_at = NOW()
+        - Return response, STOP
+     c. Jika GAGAL (429 quota, 401 invalid, 5xx server error):
+        - Update last_error_at = NOW(), last_error_msg = pesan error
+        - Lanjut ke key berikutnya
+
+3. Jika SEMUA key gagal:
+   - Throw Exception
+   - WebhookProcessorService tangkap → kirim pesan fallback ke customer
+```
+
+### 10.3 Gemini API
 - Endpoint: `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}`
 - Method: POST
-- Format messages: konversi `role: assistant` → `role: model` untuk Gemini
+- Format messages: konversi `role: assistant` → `role: model`
 - System prompt: gunakan field `system_instruction`
+- Error quota: HTTP 429
 
-### Grok API
+### 10.4 Grok API
 - Endpoint: `https://api.x.ai/v1/chat/completions`
 - Method: POST
 - Format: OpenAI-compatible (role: system, user, assistant)
 - System prompt: masukkan sebagai message pertama dengan role `system`
+- Error quota: HTTP 429
 
 ---
 
@@ -782,7 +831,8 @@ Body (form-data):
 | Dashboard | Statistik: total channel, percakapan hari ini, handover pending |
 | WA Channels | CRUD channel (nama, nomor WA, token Fonnte). Tampilkan webhook URL per channel |
 | Knowledge Base | CRUD KB dengan kategori, judul, konten, sort order, toggle aktif |
-| Konfigurasi AI | Pilih provider (Gemini/Grok), input API key, pilih model, edit system prompt, set max history |
+| Konfigurasi AI | Pilih provider aktif (Gemini/Grok), pilih model, edit system prompt, set max history |
+| API Keys | CRUD API key per provider (Gemini & Grok), set label, atur urutan prioritas, lihat status last_used & last_error |
 | Handover Keywords | CRUD kata kunci trigger handover |
 | User Management | Invite/CRUD user dalam tenant, assign role (operator/agent) |
 
@@ -823,8 +873,9 @@ Kerjakan secara berurutan, jangan loncat-loncat:
 6. **TenantFilter** — middleware inject `tenant_id` ke semua request
 7. **Super Admin Panel** — CRUD Tenant
 8. **Tenant Admin: WA Channels** — CRUD + generate webhook URL
-9. **Tenant Admin: Konfigurasi AI** — form simpan config, enkripsi API key
-10. **Tenant Admin: Knowledge Base** — CRUD KB
+9. **Tenant Admin: Konfigurasi AI** — form pilih provider, model, system prompt
+10. **Tenant Admin: API Keys** — CRUD multi key per provider, drag-and-drop prioritas
+11. **Tenant Admin: Knowledge Base** — CRUD KB
 11. **Tenant Admin: Handover Keywords** — CRUD keywords
 12. **AiService** — implementasi Gemini & Grok
 13. **FonnteService** — implementasi send message
@@ -850,7 +901,8 @@ Kerjakan secara berurutan, jangan loncat-loncat:
 - Setiap elemen UI yang muncul di lebih dari 1 halaman **wajib** dijadikan component di `_components/`
 - **Selalu** gunakan Migration untuk perubahan database, jangan edit manual
 - **Semua Model** dengan data tenant wajib ada proteksi `tenant_id` — tidak boleh ada query lintas tenant
-- **Enkripsi API key** wajib, jangan simpan plain text
+- **Enkripsi API key** wajib untuk semua row di `tenant_api_keys`, jangan simpan plain text
+- **Key rotation** — AiService wajib iterasi semua key by priority, jangan langsung throw error di key pertama yang gagal
 - **Webhook URL** format: `https://{domain}/webhook/{channel_uuid}` — tampilkan ini di UI channel management agar tenant bisa copy-paste ke Fonnte
 - Gunakan **UUID v4** untuk `tenants.uuid` dan `wa_channels.uuid`, generate saat insert
 - Response AI ke customer harus dalam **bahasa yang sama** dengan pesan customer — instruksikan ini di default system prompt
