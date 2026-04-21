@@ -31,7 +31,7 @@ abstract class BaseController extends Controller
     public function initController(RequestInterface $request, ResponseInterface $response, LoggerInterface $logger)
     {
         // Load here all helpers you want to be available in your controllers that extend BaseController.
-        $this->helpers = ['auth', 'url', 'form', 'text'];
+        $this->helpers = ['auth', 'url', 'form', 'text', 'theme'];
 
         // Caution: Do not edit this line.
         parent::initController($request, $response, $logger);
