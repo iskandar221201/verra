@@ -79,6 +79,10 @@ $routes->group('', ['filter' => ['session', 'tenant']], static function ($routes
     $routes->post('agent-chat/(:num)/return-to-ai', 'Tenant\AgentChatController::returnToAi/$1');
     $routes->post('agent-chat/(:num)/close', 'Tenant\AgentChatController::close/$1');
 
+    // Conversations
+    $routes->get('conversations', 'Tenant\ConversationController::index');
+    $routes->get('conversations/show/(:num)/(:segment)', 'Tenant\ConversationController::show/$1/$2');
+
     // SSE Endpoint
     $routes->get('sse/(:num)/(:segment)', 'Tenant\SseController::stream/$1/$2');
 });
