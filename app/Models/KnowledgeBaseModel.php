@@ -1,0 +1,60 @@
+<?php
+
+namespace App\Models;
+
+use CodeIgniter\Model;
+
+class KnowledgeBaseModel extends Model
+{
+    protected $table = 'knowledge_base';
+    protected $primaryKey = 'id';
+    protected $useAutoIncrement = true;
+    protected $returnType = 'array';
+    protected $useSoftDeletes = false;
+    protected $protectFields = true;
+    protected $allowedFields = [
+        'tenant_id',
+        'category',
+        'title',
+        'content',
+        'is_active',
+        'sort_order'
+    ];
+
+    // Dates
+    protected $useTimestamps = true;
+    protected $dateFormat = 'datetime';
+    protected $createdField = 'created_at';
+    protected $updatedField = 'updated_at';
+
+    // Callbacks
+    protected $beforeInsert = ['setTenantId'];
+
+    /**
+     * Ensure tenant_id is set before inserting
+     *
+     * @param array $data
+     * @return array
+     */
+    protected function setTenantId(array $data)
+    {
+        if (!isset($data['data']['tenant_id']) && defined('TENANT_ID')) {
+            $data['data']['tenant_id'] = TENANT_ID;
+        }
+
+        return $data;
+    }
+
+    /**
+     * Scope query to current tenant
+     *
+     * @return $this
+     */
+    public function forTenant()
+    {
+        if (defined('TENANT_ID')) {
+            $this->where('tenant_id', TENANT_ID);
+        }
+        return $this;
+    }
+}
