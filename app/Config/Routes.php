@@ -49,4 +49,19 @@ $routes->group('', ['filter' => ['session', 'tenant']], static function ($routes
     $routes->post('api-keys/update/(:num)', 'Tenant\ApiKeyController::update/$1');
     $routes->get('api-keys/delete/(:num)', 'Tenant\ApiKeyController::delete/$1');
     $routes->post('api-keys/update-priority', 'Tenant\ApiKeyController::updatePriority');
+
+    // Knowledge Base
+    $routes->get('kb', 'Tenant\KnowledgeBaseController::index');
+    $routes->get('kb/create', 'Tenant\KnowledgeBaseController::create');
+    $routes->post('kb/store', 'Tenant\KnowledgeBaseController::store');
+    $routes->get('kb/edit/(:num)', 'Tenant\KnowledgeBaseController::edit/$1');
+    $routes->post('kb/update/(:num)', 'Tenant\KnowledgeBaseController::update/$1');
+    $routes->get('kb/delete/(:num)', 'Tenant\KnowledgeBaseController::delete/$1');
+    $routes->get('kb/toggle/(:num)', 'Tenant\KnowledgeBaseController::toggleActive/$1');
+
+    // Handover Keywords
+    $routes->get('keywords', 'Tenant\KeywordController::index');
+    $routes->post('keywords/store', 'Tenant\KeywordController::store');
+    $routes->get('keywords/delete/(:num)', 'Tenant\KeywordController::delete/$1');
+    $routes->get('keywords/toggle/(:num)', 'Tenant\KeywordController::toggleActive/$1');
 });
