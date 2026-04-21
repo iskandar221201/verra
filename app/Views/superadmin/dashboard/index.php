@@ -4,12 +4,28 @@
 ]) ?>
 
 <div class="row">
-    <div class="col-md-3">
+    <div class="col-md-4">
         <?= view('_components/stat_card', [
             'icon' => 'bi-building',
             'value' => $total_tenants,
-            'label' => 'Total Tenants',
+            'label' => 'Total Tenant',
             'color' => 'primary',
+        ]) ?>
+    </div>
+    <div class="col-md-4">
+        <?= view('_components/stat_card', [
+            'icon' => 'bi-phone',
+            'value' => $total_active_channels,
+            'label' => 'Channel Aktif',
+            'color' => 'success',
+        ]) ?>
+    </div>
+    <div class="col-md-4">
+        <?= view('_components/stat_card', [
+            'icon' => 'bi-chat-dots',
+            'value' => $total_conversations,
+            'label' => 'Total Percakapan',
+            'color' => 'info',
         ]) ?>
     </div>
 </div>
