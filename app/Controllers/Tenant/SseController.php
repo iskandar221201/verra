@@ -19,6 +19,11 @@ class SseController extends BaseController
      */
     public function stream($channelId, $waNumber)
     {
+        // Disable any output buffering from CI or PHP
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
         // Set SSE headers
         header('Content-Type: text/event-stream');
         header('Cache-Control: no-cache');
@@ -28,12 +33,20 @@ class SseController extends BaseController
         $tenantId = $this->tenant_id;
         $lastEventId = (int) $this->request->getGet('lastEventId') ?: 0;
 
-        // Long-polling loop
-        // Limit execution time to avoid php timeout (e.g. 30 seconds)
+        // Send immediate heartbeat so browser knows connection is alive
+        echo ": heartbeat\n\n";
+        flush();
+
+        // Long-polling loop — reduced to 15s to free threads faster
         $startTime = time();
-        $maxDuration = 25;
+        $maxDuration = 15;
 
         while (time() - $startTime < $maxDuration) {
+            // Check if connection is closed by client FIRST
+            if (connection_aborted()) {
+                break;
+            }
+
             $events = $this->sseModel->getNewEvents($tenantId, $channelId, $waNumber, $lastEventId);
 
             if (!empty($events)) {
@@ -44,21 +57,11 @@ class SseController extends BaseController
 
                     $lastEventId = $event['id'];
                 }
-
-                // Flush output buffer to client
-                if (ob_get_level() > 0) {
-                    ob_flush();
-                }
                 flush();
             }
 
-            // Sleep for 1 second before next poll
-            sleep(1);
-
-            // Check if connection is closed by client
-            if (connection_aborted()) {
-                break;
-            }
+            // Sleep for 2 seconds before next poll (reduced DB pressure)
+            sleep(2);
         }
     }
 }

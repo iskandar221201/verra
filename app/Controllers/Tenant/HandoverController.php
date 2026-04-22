@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Models\HandoverLogModel;
 use App\Models\ConversationModel;
 use App\Models\WaChannelModel;
+use App\Models\AgentMessageModel;
 
 class HandoverController extends BaseController
 {
@@ -105,6 +106,80 @@ class HandoverController extends BaseController
         return view('_layouts/tenant', [
             'title' => $data['title'],
             'content' => view('tenant/handover/chat', $data),
+        ]);
+    }
+
+    /**
+     * JSON API: Get handover state (mode, status, claimed_by)
+     */
+    public function apiState($id)
+    {
+        $handover = $this->handoverModel->forTenant()->find($id);
+
+        if (!$handover) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status' => 'error',
+                'message' => 'Handover tidak ditemukan.',
+            ]);
+        }
+
+        return $this->response->setJSON([
+            'status' => 'success',
+            'data' => [
+                'id' => (int) $handover['id'],
+                'mode' => $handover['mode'] ?? 'ai',
+                'handover_status' => $handover['status'],
+                'claimed_by' => $handover['claimed_by'] ? (int) $handover['claimed_by'] : null,
+                'wa_number' => $handover['wa_number'],
+                'channel_id' => (int) $handover['channel_id'],
+            ],
+        ]);
+    }
+
+    /**
+     * JSON API: Get chat history for a handover
+     */
+    public function apiHistory($id)
+    {
+        $handover = $this->handoverModel->forTenant()->find($id);
+
+        if (!$handover) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status' => 'error',
+                'message' => 'Handover tidak ditemukan.',
+            ]);
+        }
+
+        // Get conversation history
+        $conversations = $this->conversationModel->getHistory(
+            $handover['tenant_id'],
+            $handover['channel_id'],
+            $handover['wa_number'],
+            50
+        );
+
+        // Get agent messages and merge
+        $agentMessageModel = new AgentMessageModel();
+        $agentMessages = $agentMessageModel
+            ->where('handover_id', $id)
+            ->orderBy('sent_at', 'ASC')
+            ->findAll();
+
+        // Build unified message list
+        $messages = [];
+        foreach ($conversations as $msg) {
+            $messages[] = [
+                'id' => (int) $msg['id'],
+                'role' => $msg['role'],
+                'message' => $msg['message'],
+                'timestamp' => $msg['created_at'],
+                'sender' => $msg['role'] === 'user' ? 'customer' : 'ai',
+            ];
+        }
+
+        return $this->response->setJSON([
+            'status' => 'success',
+            'data' => $messages,
         ]);
     }
 }

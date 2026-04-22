@@ -72,6 +72,8 @@ $routes->group('', ['filter' => ['session', 'tenant']], static function ($routes
     $routes->get('handover', 'Tenant\HandoverController::index');
     $routes->get('handover/detail/(:num)', 'Tenant\HandoverController::detail/$1');
     $routes->get('handover/chat', 'Tenant\HandoverController::chat');
+    $routes->get('handover/api/state/(:num)', 'Tenant\HandoverController::apiState/$1');
+    $routes->get('handover/api/history/(:num)', 'Tenant\HandoverController::apiHistory/$1');
 
     // Agent Chat Actions
     $routes->post('agent-chat/(:num)/claim', 'Tenant\AgentChatController::claim/$1');
