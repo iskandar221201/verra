@@ -50,10 +50,11 @@
                                         $currentRole = !empty($groups) ? $groups[0] : '';
                                         $selectedRole = old('role', $currentRole);
                                         ?>
-                                        <option value="operator" <?= $selectedRole === 'operator' ? 'selected' : '' ?>>
-                                            Operator</option>
-                                        <option value="agent" <?= $selectedRole === 'agent' ? 'selected' : '' ?>>Agent
-                                        </option>
+                                        <?php foreach ($available_roles as $value => $label): ?>
+                                            <option value="<?= $value ?>" <?= $selectedRole === $value ? 'selected' : '' ?>>
+                                                <?= $label ?>
+                                            </option>
+                                        <?php endforeach; ?>
                                     </select>
                                 </div>
                             </div>
@@ -90,3 +91,26 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const roleSelect = document.getElementById('role');
+        const tenantSelect = document.getElementById('tenant_id');
+        const tenantDiv = tenantSelect ? tenantSelect.closest('.mb-3') : null;
+
+        if (roleSelect && tenantDiv) {
+            const toggleTenant = () => {
+                if (roleSelect.value === 'superadmin') {
+                    tenantDiv.style.display = 'none';
+                    tenantSelect.removeAttribute('required');
+                } else {
+                    tenantDiv.style.display = 'block';
+                    tenantSelect.setAttribute('required', 'required');
+                }
+            };
+
+            roleSelect.addEventListener('change', toggleTenant);
+            toggleTenant(); // Initial state
+        }
+    });
+</script>
