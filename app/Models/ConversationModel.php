@@ -68,12 +68,35 @@ class ConversationModel extends Model
      */
     public function getHistory(int $tenantId, int $channelId, string $waNumber, int $limit = 10): array
     {
-        return $this->where('tenant_id', $tenantId)
-            ->where('channel_id', $channelId)
-            ->where('wa_number', $waNumber)
-            ->orderBy('created_at', 'ASC')
-            ->limit($limit)
-            ->get()
-            ->getResultArray();
+        $sql = "
+            SELECT * FROM (
+                SELECT role, message, created_at 
+                FROM conversations 
+                WHERE tenant_id = ? AND channel_id = ? AND wa_number = ?
+                
+                UNION ALL
+                
+                SELECT 'assistant' AS role, message, sent_at AS created_at 
+                FROM agent_messages 
+                WHERE tenant_id = ? AND channel_id = ? AND wa_number = ?
+            ) AS combined_history
+            ORDER BY created_at DESC
+            LIMIT ?
+        ";
+
+        $query = $this->db->query($sql, [
+            $tenantId,
+            $channelId,
+            $waNumber,
+            $tenantId,
+            $channelId,
+            $waNumber,
+            $limit
+        ]);
+
+        $results = $query->getResultArray();
+
+        // Reverse to get chronological order (oldest to newest for the AI context)
+        return array_reverse($results);
     }
 }
