@@ -28,7 +28,7 @@ class FonnteService
                     'countryCode' => '62',
                 ],
                 'http_errors' => false,
-                'verify' => false,
+                'verify' => env('CI_ENVIRONMENT') !== 'development',
             ]);
 
             $statusCode = $response->getStatusCode();
