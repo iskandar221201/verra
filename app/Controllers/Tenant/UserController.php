@@ -36,6 +36,11 @@ class UserController extends BaseController
             'title' => 'Tambah User Baru',
         ];
 
+        if (auth()->user()->inGroup('superadmin')) {
+            $tenantModel = new \App\Models\TenantModel();
+            $data['tenants'] = $tenantModel->findAll();
+        }
+
         return view('_layouts/tenant', [
             'title' => $data['title'],
             'content' => view('tenant/users/create', $data),
@@ -51,16 +56,22 @@ class UserController extends BaseController
             'password' => 'required|min_length[8]',
         ];
 
+        // Create the user entity
+        $tenantId = $this->tenant_id;
+        if (auth()->user()->inGroup('superadmin')) {
+            $tenantId = $this->request->getPost('tenant_id');
+            $rules['tenant_id'] = 'required|is_not_unique[tenants.id]';
+        }
+
         if (!$this->validate($rules)) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
-        // Create the user entity
         $user = new User([
             'email' => $this->request->getPost('email'),
             'password' => $this->request->getPost('password'),
             'full_name' => $this->request->getPost('full_name'),
-            'tenant_id' => $this->tenant_id,
+            'tenant_id' => $tenantId,
             'is_active' => 1,
         ]);
 
@@ -90,6 +101,11 @@ class UserController extends BaseController
             'user' => $user,
         ];
 
+        if (auth()->user()->inGroup('superadmin')) {
+            $tenantModel = new \App\Models\TenantModel();
+            $data['tenants'] = $tenantModel->findAll();
+        }
+
         return view('_layouts/tenant', [
             'title' => $data['title'],
             'content' => view('tenant/users/edit', $data),
@@ -110,12 +126,20 @@ class UserController extends BaseController
             'password' => 'permit_empty|min_length[8]',
         ];
 
+        if (auth()->user()->inGroup('superadmin')) {
+            $rules['tenant_id'] = 'required|is_not_unique[tenants.id]';
+        }
+
         if (!$this->validate($rules)) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
         // Update basic info
         $user->full_name = $this->request->getPost('full_name');
+
+        if (auth()->user()->inGroup('superadmin')) {
+            $user->tenant_id = $this->request->getPost('tenant_id');
+        }
 
         $password = $this->request->getPost('password');
         if (!empty($password)) {

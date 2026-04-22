@@ -15,6 +15,20 @@
                     <form action="/users/store" method="post">
                         <?= csrf_field() ?>
 
+                        <?php if (isset($tenants)): ?>
+                            <div class="mb-3">
+                                <label for="tenant_id" class="form-label fw-bold">Tenant</label>
+                                <select class="form-select" id="tenant_id" name="tenant_id" required>
+                                    <option value="" disabled selected>Pilih Tenant</option>
+                                    <?php foreach ($tenants as $tenant): ?>
+                                        <option value="<?= $tenant['id'] ?>" <?= old('tenant_id') == $tenant['id'] ? 'selected' : '' ?>>
+                                            <?= $tenant['name'] ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
                         <div class="mb-3">
                             <label for="full_name" class="form-label fw-bold">Nama Lengkap</label>
                             <input type="text" class="form-control" id="full_name" name="full_name"
@@ -34,8 +48,8 @@
                                     <label for="role" class="form-label fw-bold">Role</label>
                                     <select class="form-select" id="role" name="role" required>
                                         <option value="" disabled selected>Pilih Role</option>
-                                        <option value="operator" <?= old('role') === 'operator' ? 'selected' : '' ?>
-                                            >Operator</option>
+                                        <option value="operator" <?= old('role') === 'operator' ? 'selected' : '' ?>>
+                                            Operator</option>
                                         <option value="agent" <?= old('role') === 'agent' ? 'selected' : '' ?>>Agent
                                         </option>
                                     </select>

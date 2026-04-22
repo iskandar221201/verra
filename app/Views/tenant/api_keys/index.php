@@ -238,7 +238,7 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                '<?= config('App')->CSRFHeaderName ?>': '<?= csrf_hash() ?>'
+                '<?= csrf_header() ?>': '<?= csrf_hash() ?>'
             },
             body: JSON.stringify(data)
         })

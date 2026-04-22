@@ -34,9 +34,13 @@ class ConversationController extends BaseController
 
         // Subquery to get the latest message ID for each unique conversation
         $subQuery = $db->table('conversations')
-            ->select('MAX(id) as id')
-            ->where('tenant_id', TENANT_ID)
-            ->groupBy('channel_id, wa_number');
+            ->select('MAX(id) as id');
+
+        if ($this->tenant_id) {
+            $subQuery->where('tenant_id', $this->tenant_id);
+        }
+
+        $subQuery->groupBy('channel_id, wa_number');
 
         if (!empty($search)) {
             $subQuery->like('wa_number', $search);
@@ -68,11 +72,15 @@ class ConversationController extends BaseController
 
             // Add message count to each conversation
             foreach ($conversations as &$conv) {
-                $conv['message_count'] = $this->conversationModel
-                    ->where('tenant_id', TENANT_ID)
+                $countQuery = $this->conversationModel
                     ->where('channel_id', $conv['channel_id'])
-                    ->where('wa_number', $conv['wa_number'])
-                    ->countAllResults();
+                    ->where('wa_number', $conv['wa_number']);
+
+                if ($this->tenant_id) {
+                    $countQuery->where('tenant_id', $this->tenant_id);
+                }
+
+                $conv['message_count'] = $countQuery->countAllResults();
             }
 
             $data = [
@@ -95,32 +103,44 @@ class ConversationController extends BaseController
      *
      * @param int $channelId
      * @param string $waNumber
-     * @return string
+     * @return string|\CodeIgniter\HTTP\RedirectResponse
      */
     public function show(int $channelId, string $waNumber)
     {
         // Validate channel belongs to tenant
-        $channel = $this->channelModel->where('id', $channelId)->where('tenant_id', TENANT_ID)->first();
+        $channelQuery = $this->channelModel->where('id', $channelId);
+        if ($this->tenant_id) {
+            $channelQuery->where('tenant_id', $this->tenant_id);
+        }
+        $channel = $channelQuery->first();
+
         if (!$channel) {
             return redirect()->to('/conversations')->with('error', 'Channel tidak ditemukan.');
         }
 
         // Get all conversations
-        $history = $this->conversationModel
-            ->where('tenant_id', TENANT_ID)
+        $historyQuery = $this->conversationModel
             ->where('channel_id', $channelId)
-            ->where('wa_number', $waNumber)
-            ->orderBy('created_at', 'ASC')
-            ->findAll();
+            ->where('wa_number', $waNumber);
+
+        if ($this->tenant_id) {
+            $historyQuery->where('tenant_id', $this->tenant_id);
+        }
+
+        $history = $historyQuery->orderBy('created_at', 'ASC')->findAll();
 
         // Get agent messages to identify which assistant messages are from agents
-        $agentMessages = $this->agentMessageModel
+        $agentMessageQuery = $this->agentMessageModel
             ->select('agent_messages.message, agent_messages.sent_at, users.full_name as agent_name')
             ->join('users', 'users.id = agent_messages.agent_id')
-            ->where('agent_messages.tenant_id', TENANT_ID)
             ->where('agent_messages.channel_id', $channelId)
-            ->where('agent_messages.wa_number', $waNumber)
-            ->findAll();
+            ->where('agent_messages.wa_number', $waNumber);
+
+        if ($this->tenant_id) {
+            $agentMessageQuery->where('agent_messages.tenant_id', $this->tenant_id);
+        }
+
+        $agentMessages = $agentMessageQuery->findAll();
 
         // Map agent messages by their content and time (roughly) or just check role
         // Since AgentChatService saves exactly the same message to both, we can match them.

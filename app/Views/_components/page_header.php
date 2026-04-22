@@ -21,7 +21,7 @@
     </div>
     <?php if (isset($action)): ?>
         <a href="<?= $action['url'] ?>" class="btn btn-primary d-flex align-items-center shadow-sm border-0 px-4 py-2"
-            style="background-color: var(--color-primary);">
+            style="background-color: var(--color-primary);" <?= $action['attr'] ?? '' ?>>
             <i class="bi <?= $action['icon'] ?? 'bi-plus' ?> me-2"></i>
             <?= $action['label'] ?>
         </a>
