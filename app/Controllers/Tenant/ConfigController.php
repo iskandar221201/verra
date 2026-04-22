@@ -30,9 +30,17 @@ class ConfigController extends BaseController
             $config = $this->configModel->forTenant()->first();
         }
 
+        $tenantId = defined('TENANT_ID') ? TENANT_ID : (auth()->user()->tenant_id ?? 0);
+
+        $aiService = new \App\Services\AiService();
+        $geminiModels = $aiService->getAvailableModels('gemini', $tenantId);
+        $grokModels = $aiService->getAvailableModels('grok', $tenantId);
+
         $data = [
             'title' => 'Konfigurasi AI',
             'config' => $config,
+            'gemini_models' => $geminiModels,
+            'grok_models' => $grokModels,
         ];
 
         return view('_layouts/tenant', [

@@ -191,11 +191,12 @@
     let currentHandoverId = null;
     let currentWaNumber = null;
     let currentChannelId = null;
-    let sseSource = null;
-    let lastEventId = 0;
+    let pollingInterval = null;
+    let renderedMessageCount = 0;
+    let isSending = false;
     const myAgentId = <?= auth()->id() ?>;
 
-    // Get query param for direct open
+    // Auto-open from query param
     document.addEventListener('DOMContentLoaded', function () {
         const urlParams = new URLSearchParams(window.location.search);
         const id = urlParams.get('id');
@@ -215,69 +216,59 @@
 
         // Highlight sidebar
         document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
-        document.getElementById('handover-item-' + id).classList.add('active');
+        const item = document.getElementById('handover-item-' + id);
+        if (item) item.classList.add('active');
 
         currentHandoverId = id;
         currentWaNumber = waNumber;
         currentChannelId = channelId;
+        renderedMessageCount = 0;
 
         document.getElementById('currentWaNumber').innerText = waNumber;
 
-        // Load detail & history
-        fetch(`/handover/detail/${id}`)
-            .then(res => res.text())
-            .then(html => {
-                // We need a better way to get data, but for now we extract from detail view or use another endpoint
-                // Actually, let's create a dedicated JSON endpoint if needed, but per spec I'll just use what I have.
-                // Wait, I didn't create a JSON history endpoint. I'll just fetch history directly here for now.
-                refreshChatState();
-            });
+        // Fetch state + history in parallel via JSON APIs
+        Promise.all([
+            fetch(`/handover/api/state/${id}`).then(r => r.json()),
+            fetch(`/handover/api/history/${id}`).then(r => r.json())
+        ]).then(([stateRes, historyRes]) => {
+            // Render history
+            const box = document.getElementById('chatHistoryBox');
+            box.innerHTML = '';
 
-        // Subscribe to SSE
-        subscribeSSE(channelId, waNumber);
-    }
-
-    function refreshChatState() {
-        // This is a quick workaround: we need the current handover state (mode, claimed_by)
-        // I'll fetch it via detail endpoint (returning partial or we can add a small API method)
-        // Let's assume we have a way to get state. I'll just call an async function.
-        updateUIState();
-    }
-
-    async function updateUIState() {
-        try {
-            const response = await fetch(`/handover/detail/${currentHandoverId}`);
-            const html = await response.text();
-
-            // Use DOM Parser to extract specific info from detail view
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-
-            // Extract messages
-            const historyBox = doc.getElementById('chatHistoryBox');
-            if (historyBox) {
-                document.getElementById('chatHistoryBox').innerHTML = historyBox.innerHTML;
-                scrollToBottom();
+            if (historyRes.status === 'success' && historyRes.data.length > 0) {
+                historyRes.data.forEach(msg => {
+                    appendBubble(msg.message, msg.sender, msg.timestamp);
+                });
+                renderedMessageCount = historyRes.data.length;
+            } else {
+                box.innerHTML = '<div class="text-center py-5 text-muted">Belum ada percakapan.</div>';
             }
 
-            // Extract state from the info table in detail view
-            const rows = doc.querySelectorAll('table tr');
-            let mode = 'ai';
-            let claimedBy = null;
-            let status = 'pending';
+            // Render header actions from state
+            if (stateRes.status === 'success') {
+                const s = stateRes.data;
+                renderHeaderActions(s.handover_status, s.mode, s.claimed_by);
+            }
+        }).catch(err => {
+            console.error('Failed to load chat:', err);
+            document.getElementById('chatHistoryBox').innerHTML = '<div class="text-center py-5 text-danger">Gagal memuat percakapan.</div>';
+        });
 
-            rows.forEach(row => {
-                const label = row.querySelector('td:first-child')?.innerText.trim();
-                const value = row.querySelector('td:last-child')?.innerText.trim();
+        // Start polling for new messages
+        startPolling();
+    }
 
-                if (label === 'Mode Saat Ini') mode = value.toLowerCase();
-                if (label === 'Claimed By' && value.includes('User ID:')) claimedBy = parseInt(value.split(':')[1].trim());
-                if (label === 'Status') status = row.querySelector('.badge')?.innerText.toLowerCase().trim();
-            });
-
-            renderHeaderActions(status, mode, claimedBy);
+    async function refreshState() {
+        if (!currentHandoverId) return;
+        try {
+            const res = await fetch(`/handover/api/state/${currentHandoverId}`);
+            const json = await res.json();
+            if (json.status === 'success') {
+                const s = json.data;
+                renderHeaderActions(s.handover_status, s.mode, s.claimed_by);
+            }
         } catch (e) {
-            console.error("Failed to update UI state", e);
+            console.error('Failed to refresh state', e);
         }
     }
 
@@ -305,6 +296,7 @@
         if (status === 'handled') {
             actionsArea.innerHTML = '<span class="badge bg-success">Selesai</span>';
             readOnlyMsg.style.display = 'block';
+            stopPolling(); // Stop polling when handover is done
             return;
         }
 
@@ -334,7 +326,7 @@
             const result = await response.json();
 
             if (result.status === 'success') {
-                updateUIState();
+                refreshState();
             } else {
                 alert(result.message);
             }
@@ -343,48 +335,80 @@
         }
     }
 
-    function subscribeSSE(channelId, waNumber) {
-        if (sseSource) sseSource.close();
-
-        sseSource = new EventSource(`/sse/${channelId}/${waNumber}?lastEventId=${lastEventId}`);
-
-        sseSource.onmessage = function (e) {
-            // SSE standard data handling
-        };
-
-        // Custom events
-        sseSource.addEventListener('new_message', function (e) {
-            const data = JSON.parse(e.data);
-            appendBubble(data.message, data.sender, data.timestamp);
-        });
-
-        sseSource.addEventListener('handover_claimed', function (e) {
-            updateUIState();
-        });
-
-        sseSource.addEventListener('returned_to_ai', function (e) {
-            updateUIState();
-        });
+    function startPolling() {
+        stopPolling();
+        pollingInterval = setInterval(pollMessages, 2500);
     }
+
+    function stopPolling() {
+        if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+        }
+    }
+
+    async function pollMessages() {
+        if (!currentHandoverId) return;
+        try {
+            // Fetch history + state in parallel
+            const [historyRes, stateRes] = await Promise.all([
+                fetch(`/handover/api/history/${currentHandoverId}`).then(r => r.json()),
+                fetch(`/handover/api/state/${currentHandoverId}`).then(r => r.json())
+            ]);
+
+            // Append only NEW messages
+            if (historyRes.status === 'success') {
+                const allMessages = historyRes.data;
+                if (allMessages.length > renderedMessageCount) {
+                    const newMessages = allMessages.slice(renderedMessageCount);
+                    newMessages.forEach(msg => {
+                        appendBubble(msg.message, msg.sender, msg.timestamp);
+                    });
+                }
+            }
+
+            // Update header state (mode, claimed_by, status)
+            if (stateRes.status === 'success') {
+                const s = stateRes.data;
+                renderHeaderActions(s.handover_status, s.mode, s.claimed_by);
+            }
+        } catch (e) {
+            console.error('Polling error:', e);
+        }
+    }
+
+    // Cleanup on page leave
+    window.addEventListener('beforeunload', stopPolling);
 
     function appendBubble(message, sender, timestamp) {
         const box = document.getElementById('chatHistoryBox');
-        const timeStr = timestamp.split(' ')[1].substring(0, 5);
+        // Remove "no messages" placeholder if present
+        const placeholder = box.querySelector('.text-muted');
+        if (placeholder && box.children.length === 1) box.innerHTML = '';
+
+        const timeStr = timestamp ? timestamp.split(' ')[1]?.substring(0, 5) || '' : '';
 
         const div = document.createElement('div');
         if (sender === 'customer') {
             div.className = 'bubble bubble-customer align-self-start';
-            div.innerHTML = `<div class="small fw-bold text-primary mb-1">Customer</div><div>${message}</div><div class="text-end small text-muted mt-1" style="font-size: 0.7rem;">${timeStr}</div>`;
+            div.innerHTML = `<div class="small fw-bold text-primary mb-1">Customer</div><div>${escapeHtml(message)}</div><div class="text-end small text-muted mt-1" style="font-size: 0.7rem;">${timeStr}</div>`;
         } else if (sender === 'agent') {
             div.className = 'bubble bubble-agent align-self-end';
-            div.innerHTML = `<div class="small fw-bold mb-1">Agent</div><div>${message}</div><div class="text-end small text-white-50 mt-1" style="font-size: 0.7rem;">${timeStr}</div>`;
+            div.innerHTML = `<div class="small fw-bold mb-1">Agent</div><div>${escapeHtml(message)}</div><div class="text-end small text-white-50 mt-1" style="font-size: 0.7rem;">${timeStr}</div>`;
         } else {
             div.className = 'bubble bubble-ai align-self-end';
-            div.innerHTML = `<div class="small fw-bold mb-1">AI</div><div>${message}</div><div class="text-end small text-muted mt-1" style="font-size: 0.7rem;">${timeStr}</div>`;
+            div.innerHTML = `<div class="small fw-bold mb-1">AI</div><div>${escapeHtml(message)}</div><div class="text-end small text-muted mt-1" style="font-size: 0.7rem;">${timeStr}</div>`;
         }
 
         box.appendChild(div);
+        renderedMessageCount++;
         scrollToBottom();
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     function scrollToBottom() {
@@ -394,9 +418,17 @@
 
     document.getElementById('sendMessageForm').onsubmit = function (e) {
         e.preventDefault();
+        if (isSending) return; // Prevent double submit
+
         const input = document.getElementById('messageInput');
+        const btn = this.querySelector('button[type="submit"]');
         const message = input.value.trim();
         if (!message || !currentHandoverId) return;
+
+        // Disable button + show loading
+        isSending = true;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
 
         const formData = new FormData();
         formData.append('message', message);
@@ -411,6 +443,13 @@
             } else {
                 alert(data.message);
             }
+        }).catch(() => {
+            alert('Gagal mengirim pesan.');
+        }).finally(() => {
+            // Re-enable button
+            isSending = false;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-send"></i>';
         });
     };
 </script>

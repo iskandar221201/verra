@@ -89,6 +89,110 @@ class AiService
     }
 
     /**
+     * Get available models for a provider.
+     *
+     * @param string $provider 'gemini' or 'grok'
+     * @param int $tenantId
+     * @return array Array of model names
+     */
+    public function getAvailableModels(string $provider, int $tenantId): array
+    {
+        $cacheKey = "ai_models_{$provider}_{$tenantId}";
+        $cached = cache($cacheKey);
+        if ($cached) {
+            return $cached;
+        }
+
+        // Get the first active API key for the provider
+        $key = $this->apiKeyModel
+            ->where('tenant_id', $tenantId)
+            ->where('provider', $provider)
+            ->where('is_active', 1)
+            ->orderBy('priority', 'ASC')
+            ->first();
+
+        if (!$key) {
+            return [];
+        }
+
+        try {
+            $decryptedKey = $this->apiKeyModel->decryptKey($key['api_key']);
+            $models = ($provider === 'grok')
+                ? $this->fetchGrokModels($decryptedKey)
+                : $this->fetchGeminiModels($decryptedKey);
+
+            if (!empty($models)) {
+                // Cache for 24 hours (86400 seconds)
+                cache()->save($cacheKey, $models, 86400);
+            }
+
+            return $models;
+        } catch (\Exception $e) {
+            log_message('error', "[AiService] Failed to fetch models for {$provider}: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Fetch available models from Gemini API
+     */
+    private function fetchGeminiModels(string $apiKey): array
+    {
+        $url = "https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}";
+
+        $client = \Config\Services::curlrequest();
+        $response = $client->request('GET', $url, [
+            'http_errors' => false,
+            'verify' => false,
+        ]);
+
+        $body = json_decode($response->getBody(), true);
+        if ($response->getStatusCode() !== 200 || !isset($body['models'])) {
+            return [];
+        }
+
+        $models = [];
+        foreach ($body['models'] as $m) {
+            // Only include models that support generateContent
+            if (isset($m['supportedGenerationMethods']) && in_array('generateContent', $m['supportedGenerationMethods'])) {
+                // Return model name without 'models/' prefix
+                $models[] = str_replace('models/', '', $m['name']);
+            }
+        }
+
+        return $models;
+    }
+
+    /**
+     * Fetch available models from xAI Grok API
+     */
+    private function fetchGrokModels(string $apiKey): array
+    {
+        $url = 'https://api.x.ai/v1/models';
+
+        $client = \Config\Services::curlrequest();
+        $response = $client->request('GET', $url, [
+            'headers' => [
+                'Authorization' => "Bearer {$apiKey}",
+            ],
+            'http_errors' => false,
+            'verify' => false,
+        ]);
+
+        $body = json_decode($response->getBody(), true);
+        if ($response->getStatusCode() !== 200 || !isset($body['data'])) {
+            return [];
+        }
+
+        $models = [];
+        foreach ($body['data'] as $m) {
+            $models[] = $m['id'];
+        }
+
+        return $models;
+    }
+
+    /**
      * Call Google Gemini API
      *
      * @param string $apiKey Decrypted API key
@@ -126,6 +230,7 @@ class AiService
             ],
             'json' => $payload,
             'http_errors' => false,
+            'verify' => false, // Added verify false here too for local
         ]);
 
         $statusCode = $response->getStatusCode();
@@ -189,6 +294,7 @@ class AiService
             ],
             'json' => $payload,
             'http_errors' => false,
+            'verify' => false, // Added verify false here too for local
         ]);
 
         $statusCode = $response->getStatusCode();
