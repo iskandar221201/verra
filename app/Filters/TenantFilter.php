@@ -23,9 +23,8 @@ class TenantFilter implements FilterInterface
 
         // If user is not superadmin, they MUST have a tenant_id
         if (empty($user->tenant_id)) {
-            // Log them out or show error? For now, redirect to login with error
             auth()->logout();
-            return redirect()->to(config('Auth')->loginRedirect())->with('error', 'User tidak terikat dengan tenant manapun.');
+            return redirect()->to(config('Auth')->loginRedirect())->with('error', 'Akun Anda belum terhubung dengan tenant manapun. Silakan hubungi Super Admin.');
         }
 
         // Define a global constant or setting for easy access

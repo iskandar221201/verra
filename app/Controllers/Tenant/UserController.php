@@ -36,6 +36,34 @@ class UserController extends BaseController
             'title' => 'Tambah User Baru',
         ];
 
+        // Define available roles based on current user's role
+        $availableRoles = [
+            'operator' => 'Operator',
+            'agent' => 'Agent',
+        ];
+
+        if (auth()->user()->inGroup('superadmin')) {
+            $tenantModel = new \App\Models\TenantModel();
+            $data['tenants'] = $tenantModel->findAll();
+
+            // Super Admin can add any role
+            $availableRoles = [
+                'superadmin' => 'Administrator',
+                'tenant_admin' => 'Admin Tenant',
+                'operator' => 'Operator',
+                'agent' => 'Agent',
+            ];
+        } elseif (auth()->user()->inGroup('tenant_admin')) {
+            // Tenant Admin can add tenant roles
+            $availableRoles = [
+                'tenant_admin' => 'Admin Tenant',
+                'operator' => 'Operator',
+                'agent' => 'Agent',
+            ];
+        }
+
+        $data['available_roles'] = $availableRoles;
+
         return view('_layouts/tenant', [
             'title' => $data['title'],
             'content' => view('tenant/users/create', $data),
@@ -44,23 +72,42 @@ class UserController extends BaseController
 
     public function store()
     {
+        $allowedRoles = ['operator', 'agent'];
+        if (auth()->user()->inGroup('superadmin')) {
+            $allowedRoles = ['superadmin', 'tenant_admin', 'operator', 'agent'];
+        } elseif (auth()->user()->inGroup('tenant_admin')) {
+            $allowedRoles = ['tenant_admin', 'operator', 'agent'];
+        }
+
         $rules = [
             'email' => 'required|valid_email|is_unique[auth_identities.secret]',
             'full_name' => 'required|min_length[3]|max_length[255]',
-            'role' => 'required|in_list[operator,agent]',
+            'role' => 'required|in_list[' . implode(',', $allowedRoles) . ']',
             'password' => 'required|min_length[8]',
         ];
+
+        // Create the user entity
+        $role = $this->request->getPost('role');
+        $tenantId = $this->tenant_id;
+
+        if (auth()->user()->inGroup('superadmin')) {
+            // If superadmin role is selected, tenant_id must be null
+            $tenantId = ($role === 'superadmin') ? null : $this->request->getPost('tenant_id');
+
+            if ($role !== 'superadmin') {
+                $rules['tenant_id'] = 'required|is_not_unique[tenants.id]';
+            }
+        }
 
         if (!$this->validate($rules)) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
-        // Create the user entity
         $user = new User([
             'email' => $this->request->getPost('email'),
             'password' => $this->request->getPost('password'),
             'full_name' => $this->request->getPost('full_name'),
-            'tenant_id' => $this->tenant_id,
+            'tenant_id' => $tenantId,
             'is_active' => 1,
         ]);
 
@@ -90,6 +137,32 @@ class UserController extends BaseController
             'user' => $user,
         ];
 
+        // Define available roles based on current user's role
+        $availableRoles = [
+            'operator' => 'Operator',
+            'agent' => 'Agent',
+        ];
+
+        if (auth()->user()->inGroup('superadmin')) {
+            $tenantModel = new \App\Models\TenantModel();
+            $data['tenants'] = $tenantModel->findAll();
+
+            $availableRoles = [
+                'superadmin' => 'Administrator',
+                'tenant_admin' => 'Admin Tenant',
+                'operator' => 'Operator',
+                'agent' => 'Agent',
+            ];
+        } elseif (auth()->user()->inGroup('tenant_admin')) {
+            $availableRoles = [
+                'tenant_admin' => 'Admin Tenant',
+                'operator' => 'Operator',
+                'agent' => 'Agent',
+            ];
+        }
+
+        $data['available_roles'] = $availableRoles;
+
         return view('_layouts/tenant', [
             'title' => $data['title'],
             'content' => view('tenant/users/edit', $data),
@@ -104,11 +177,25 @@ class UserController extends BaseController
             return redirect()->to(base_url('users'))->with('error', 'User tidak ditemukan.');
         }
 
+        $allowedRoles = ['operator', 'agent'];
+        if (auth()->user()->inGroup('superadmin')) {
+            $allowedRoles = ['superadmin', 'tenant_admin', 'operator', 'agent'];
+        } elseif (auth()->user()->inGroup('tenant_admin')) {
+            $allowedRoles = ['tenant_admin', 'operator', 'agent'];
+        }
+
         $rules = [
             'full_name' => 'required|min_length[3]|max_length[255]',
-            'role' => 'required|in_list[operator,agent]',
+            'role' => 'required|in_list[' . implode(',', $allowedRoles) . ']',
             'password' => 'permit_empty|min_length[8]',
         ];
+
+        if (auth()->user()->inGroup('superadmin')) {
+            $role = $this->request->getPost('role');
+            if ($role !== 'superadmin') {
+                $rules['tenant_id'] = 'required|is_not_unique[tenants.id]';
+            }
+        }
 
         if (!$this->validate($rules)) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
@@ -116,6 +203,11 @@ class UserController extends BaseController
 
         // Update basic info
         $user->full_name = $this->request->getPost('full_name');
+
+        if (auth()->user()->inGroup('superadmin')) {
+            $role = $this->request->getPost('role');
+            $user->tenant_id = ($role === 'superadmin') ? null : $this->request->getPost('tenant_id');
+        }
 
         $password = $this->request->getPost('password');
         if (!empty($password)) {
