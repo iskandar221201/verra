@@ -28,6 +28,7 @@ class FonnteService
                     'countryCode' => '62',
                 ],
                 'http_errors' => false,
+                'verify' => false,
             ]);
 
             $statusCode = $response->getStatusCode();

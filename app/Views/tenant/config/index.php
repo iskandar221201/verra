@@ -54,15 +54,37 @@
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <label for="gemini_model" class="form-label fw-bold">Gemini Model</label>
-                            <input type="text" class="form-control" name="gemini_model" id="gemini_model"
-                                value="<?= esc($config['gemini_model']) ?>" placeholder="e.g. gemini-1.5-flash">
-                            <small class="text-muted">Model ID dari Google AI Studio</small>
+                            <?php if (!empty($gemini_models)): ?>
+                                <select class="form-select" name="gemini_model" id="gemini_model">
+                                    <?php foreach ($gemini_models as $model): ?>
+                                        <option value="<?= esc($model) ?>" <?= ($config['gemini_model'] == $model) ? 'selected' : '' ?>>
+                                            <?= esc($model) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            <?php else: ?>
+                                <input type="text" class="form-control" name="gemini_model" id="gemini_model"
+                                    value="<?= esc($config['gemini_model']) ?>" placeholder="e.g. gemini-1.5-flash">
+                                <small class="text-danger small">Gagal mengambil daftar model atau API Key belum diset.</small>
+                            <?php endif; ?>
+                            <small class="text-muted d-block mt-1">Model ID dari Google AI Studio</small>
                         </div>
                         <div class="col-md-6">
                             <label for="grok_model" class="form-label fw-bold">Grok Model</label>
-                            <input type="text" class="form-control" name="grok_model" id="grok_model"
-                                value="<?= esc($config['grok_model']) ?>" placeholder="e.g. grok-beta">
-                            <small class="text-muted">Model ID dari x.ai Console</small>
+                            <?php if (!empty($grok_models)): ?>
+                                <select class="form-select" name="grok_model" id="grok_model">
+                                    <?php foreach ($grok_models as $model): ?>
+                                        <option value="<?= esc($model) ?>" <?= ($config['grok_model'] == $model) ? 'selected' : '' ?>>
+                                            <?= esc($model) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            <?php else: ?>
+                                <input type="text" class="form-control" name="grok_model" id="grok_model"
+                                    value="<?= esc($config['grok_model']) ?>" placeholder="e.g. grok-beta">
+                                <small class="text-danger small">Gagal mengambil daftar model atau API Key belum diset.</small>
+                            <?php endif; ?>
+                            <small class="text-muted d-block mt-1">Model ID dari x.ai Console</small>
                         </div>
                     </div>
 
