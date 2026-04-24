@@ -4,9 +4,9 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
-class TenantConfigModel extends Model
+class LeadSalespersonModel extends Model
 {
-    protected $table = 'tenant_configs';
+    protected $table = 'lead_salespersons';
     protected $primaryKey = 'id';
     protected $useAutoIncrement = true;
     protected $returnType = 'array';
@@ -14,18 +14,16 @@ class TenantConfigModel extends Model
     protected $protectFields = true;
     protected $allowedFields = [
         'tenant_id',
-        'ai_provider',
-        'gemini_model',
-        'grok_model',
-        'system_prompt',
-        'max_history',
-        'lead_auto_assign',
-        'lead_wa_group_id',
-        'lead_round_robin_counter',
+        'name',
+        'wa_number',
+        'sort_order',
+        'is_active',
     ];
 
     // Dates
-    protected $useTimestamps = false;
+    protected $useTimestamps = true;
+    protected $dateFormat = 'datetime';
+    protected $createdField = 'created_at';
     protected $updatedField = 'updated_at';
 
     // Callbacks
@@ -33,9 +31,6 @@ class TenantConfigModel extends Model
 
     /**
      * Ensure tenant_id is set before inserting
-     *
-     * @param array $data
-     * @return array
      */
     protected function setTenantId(array $data)
     {
@@ -48,8 +43,6 @@ class TenantConfigModel extends Model
 
     /**
      * Scope query to current tenant
-     *
-     * @return $this
      */
     public function forTenant()
     {
@@ -57,5 +50,16 @@ class TenantConfigModel extends Model
             $this->where('tenant_id', TENANT_ID);
         }
         return $this;
+    }
+
+    /**
+     * Get active salespersons sorted by sort_order
+     */
+    public function getActiveSorted(int $tenantId): array
+    {
+        return $this->where('tenant_id', $tenantId)
+            ->where('is_active', 1)
+            ->orderBy('sort_order', 'ASC')
+            ->findAll();
     }
 }

@@ -90,6 +90,8 @@ class AuthGroups extends ShieldAuthGroups
         'handover.read' => 'Can view handover',
         'handover.handle' => 'Can handle handover',
         'handover.close' => 'Can close handover',
+        'leads.config' => 'Can manage lead assignment config',
+        'leads.assign' => 'Can manually assign leads',
     ];
 
     /**
@@ -109,6 +111,7 @@ class AuthGroups extends ShieldAuthGroups
             'config.*',
             'conversations.*',
             'handover.*',
+            'leads.*',
         ],
         'tenant_admin' => [
             'users.*',
@@ -117,10 +120,12 @@ class AuthGroups extends ShieldAuthGroups
             'config.*',
             'conversations.*',
             'handover.*',
+            'leads.*',
         ],
         'operator' => [
             'conversations.read',
             'handover.*',
+            'leads.assign',
         ],
         'agent' => [
             'handover.*',

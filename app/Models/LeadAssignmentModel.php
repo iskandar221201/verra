@@ -4,9 +4,9 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
-class TenantConfigModel extends Model
+class LeadAssignmentModel extends Model
 {
-    protected $table = 'tenant_configs';
+    protected $table = 'lead_assignments';
     protected $primaryKey = 'id';
     protected $useAutoIncrement = true;
     protected $returnType = 'array';
@@ -14,28 +14,25 @@ class TenantConfigModel extends Model
     protected $protectFields = true;
     protected $allowedFields = [
         'tenant_id',
-        'ai_provider',
-        'gemini_model',
-        'grok_model',
-        'system_prompt',
-        'max_history',
-        'lead_auto_assign',
-        'lead_wa_group_id',
-        'lead_round_robin_counter',
+        'channel_id',
+        'wa_number',
+        'salesperson_id',
+        'assigned_by',
+        'assigned_by_user_id',
+        'notified',
     ];
 
-    // Dates
-    protected $useTimestamps = false;
-    protected $updatedField = 'updated_at';
+    // Dates — append-only, no updates
+    protected $useTimestamps = true;
+    protected $dateFormat = 'datetime';
+    protected $createdField = 'created_at';
+    protected $updatedField = '';
 
     // Callbacks
     protected $beforeInsert = ['setTenantId'];
 
     /**
      * Ensure tenant_id is set before inserting
-     *
-     * @param array $data
-     * @return array
      */
     protected function setTenantId(array $data)
     {
@@ -48,8 +45,6 @@ class TenantConfigModel extends Model
 
     /**
      * Scope query to current tenant
-     *
-     * @return $this
      */
     public function forTenant()
     {

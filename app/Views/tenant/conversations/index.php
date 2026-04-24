@@ -51,7 +51,8 @@
             '<div class="text-muted small text-truncate" style="max-width: 250px;">' . esc($conv['message']) . '</div>',
             '<span class="badge rounded-pill bg-info text-white">' . $conv['message_count'] . '</span>',
             '<div class="small text-muted">' . date('d M H:i', strtotime($conv['created_at'])) . '</div>',
-            '<a href="/conversations/show/' . $conv['channel_id'] . '/' . $conv['wa_number'] . '" class="btn btn-sm btn-outline-primary px-3 rounded-pill shadow-sm"><i class="bi bi-eye-fill me-1"></i> Lihat</a>'
+            '<a href="/conversations/show/' . $conv['channel_id'] . '/' . $conv['wa_number'] . '" class="btn btn-sm btn-outline-primary px-3 rounded-pill shadow-sm me-1"><i class="bi bi-eye-fill me-1"></i> Lihat</a>'
+            . '<button class="btn btn-sm btn-outline-success px-3 rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#assignLeadModal" data-channel-id="' . $conv['channel_id'] . '" data-wa-number="' . esc($conv['wa_number']) . '"><i class="bi bi-person-plus me-1"></i> Assign</button>'
         ];
     }
     ?>
@@ -68,3 +69,5 @@
         </div>
     <?php endif; ?>
 </div>
+
+<?= view('tenant/conversations/_assign_modal') ?>
