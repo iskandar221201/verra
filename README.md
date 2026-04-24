@@ -1,69 +1,156 @@
-# CodeIgniter 4 Application Starter
+# Verra
 
-## What is CodeIgniter?
+> WhatsApp AI Customer Service platform — multi-tenant, self-hosted, built on CodeIgniter 4.
 
-CodeIgniter is a PHP full-stack web framework that is light, fast, flexible and secure.
-More information can be found at the [official site](https://codeigniter.com).
+Verra lets businesses run their own AI-powered WhatsApp CS independently. Each tenant gets isolated AI configuration, WhatsApp channels, knowledge base, and conversation history — all on a single deployment.
 
-This repository holds a composer-installable app starter.
-It has been built from the
-[development repository](https://github.com/codeigniter4/CodeIgniter4).
+---
 
-More information about the plans for version 4 can be found in [CodeIgniter 4](https://forum.codeigniter.com/forumdisplay.php?fid=28) on the forums.
+## Features
 
-You can read the [user guide](https://codeigniter.com/user_guide/)
-corresponding to the latest version of the framework.
+- **AI Auto-Reply** — Responds to incoming WhatsApp messages automatically using Gemini or Grok, grounded by a per-tenant knowledge base and custom system prompt
+- **Human Handover** — Keyword-triggered escalation to a live agent with real-time chat via SSE
+- **Lead Assignment** — Auto-detects new leads and assigns them to sales via WhatsApp group notification (round-robin, persistent)
+- **Multi-Tenant** — Full data isolation per tenant via shared DB with `tenant_id` scoping
+- **Multi-Channel** — Each tenant can operate multiple WhatsApp numbers via Fonnte
+- **API Key Rotation** — Multiple AI API keys per provider with automatic priority-based failover
+- **RBAC** — Four roles: `superadmin`, `tenant_admin`, `operator`, `agent`
+- **Knowledge Base** — Structured KB with categories, sort order, and per-entry toggle
 
-## Installation & updates
+---
 
-`composer create-project codeigniter4/appstarter` then `composer update` whenever
-there is a new release of the framework.
+## Tech Stack
 
-When updating, check the release notes to see if there are any changes you might need to apply
-to your `app` folder. The affected files can be copied or merged from
-`vendor/codeigniter4/framework/app`.
+| Layer | Technology |
+|---|---|
+| Framework | CodeIgniter 4 |
+| Auth & RBAC | CI4 Shield |
+| Database | MySQL 8+ |
+| WA Gateway | Fonnte API |
+| AI Providers | Google Gemini, xAI Grok |
+| Frontend | Bootstrap 5 + Vanilla JS |
+| Real-time | Server-Sent Events (SSE) |
 
-## Setup
+---
 
-Copy `env` to `.env` and tailor for your app, specifically the baseURL
-and any database settings.
+## How It Works
 
-## Important Change with index.php
+```
+[WhatsApp Customer]
+       ↓
+  [Fonnte API]
+       ↓  webhook POST → /webhook/{channel_uuid}
+  [Verra CI4]
+   ↓         ↓
+[KB Tenant] [Conversation History]
+       ↓
+  [AI Provider]
+       ↓
+  [Verra CI4]
+       ↓  Fonnte Send API
+[WhatsApp Customer]
+```
 
-`index.php` is no longer in the root of the project! It has been moved inside the *public* folder,
-for better security and separation of components.
+Each WA channel has a unique UUID-based webhook URL. Fonnte routes incoming messages to that URL, and Verra handles the rest — context building, AI call, response delivery.
 
-This means that you should configure your web server to "point" to your project's *public* folder, and
-not to the project root. A better practice would be to configure a virtual host to point there. A poor practice would be to point your web server to the project root and expect to enter *public/...*, as the rest of your logic and the
-framework are exposed.
+If a message contains a handover keyword, the conversation switches to `agent` mode and a live agent can take over from the agent panel.
 
-**Please** read the user guide for a better explanation of how CI4 works!
+---
 
-## Repository Management
+## Roles
 
-We use GitHub issues, in our main repository, to track **BUGS** and to track approved **DEVELOPMENT** work packages.
-We use our [forum](http://forum.codeigniter.com) to provide SUPPORT and to discuss
-FEATURE REQUESTS.
+| Role | Scope | Access |
+|---|---|---|
+| `superadmin` | Global | Manage all tenants, users, system config |
+| `tenant_admin` | Per Tenant | Manage KB, channels, AI config, API keys, users |
+| `operator` | Per Tenant | View conversations and handover list (read-only) |
+| `agent` | Per Tenant | Claim and handle handover conversations |
 
-This repository is a "distribution" one, built by our release preparation script.
-Problems with it can be raised on our forum, or as issues in the main repository.
+---
 
-## Server Requirements
+## Requirements
 
-PHP version 8.2 or higher is required, with the following extensions installed:
+- PHP 8.1+
+- MySQL 8+
+- Apache or Nginx (shared hosting compatible)
+- Fonnte account with active WA number
+- Google Gemini or xAI Grok API key
 
-- [intl](http://php.net/manual/en/intl.requirements.php)
-- [mbstring](http://php.net/manual/en/mbstring.installation.php)
+---
 
-> [!WARNING]
-> - The end of life date for PHP 7.4 was November 28, 2022.
-> - The end of life date for PHP 8.0 was November 26, 2023.
-> - The end of life date for PHP 8.1 was December 31, 2025.
-> - If you are still using below PHP 8.2, you should upgrade immediately.
-> - The end of life date for PHP 8.2 will be December 31, 2026.
+## Installation
 
-Additionally, make sure that the following extensions are enabled in your PHP:
+```bash
+git clone https://github.com/your-username/verra.git
+cd verra
+composer install
+cp env .env
+```
 
-- json (enabled by default - don't turn it off)
-- [mysqlnd](http://php.net/manual/en/mysqlnd.install.php) if you plan to use MySQL
-- [libcurl](http://php.net/manual/en/curl.requirements.php) if you plan to use the HTTP\CURLRequest library
+Edit `.env`:
+```
+database.default.hostname = localhost
+database.default.database = verra
+database.default.username = root
+database.default.password = yourpassword
+database.default.DBDriver = MySQLi
+
+encryption.key = your-32-char-key-here
+```
+
+Run migrations and seeder:
+```bash
+php spark migrate
+php spark db:seed InitialSeeder
+```
+
+Point your web server document root to `/public`.
+
+---
+
+## Webhook Setup
+
+For each WA channel, Verra generates a unique webhook URL:
+```
+https://yourdomain.com/webhook/{channel_uuid}
+```
+
+Paste this URL into your Fonnte dashboard as the webhook endpoint for the corresponding WA number.
+
+---
+
+## Lead Assignment
+
+Verra can automatically detect new leads (first-time contacts with no conversation history) and notify a WhatsApp sales group via Fonnte with round-robin assignment.
+
+Configure from **Settings → Lead Assignment**:
+1. Toggle system on
+2. Enter the WA Group ID (from your Fonnte dashboard)
+3. Add your sales team members (name + WA number)
+4. Verra assigns leads in order, cycling persistently
+
+Manual assignment is also available from the conversation list.
+
+---
+
+## Security
+
+- API keys stored encrypted via CI4's built-in Encryption service
+- Webhook endpoints use UUID v4 — not guessable, not enumerable
+- Strict `tenant_id` scoping on every data query — no cross-tenant leakage
+- CSRF protection active on all forms
+- Shield handles session, password hashing, and login rate limiting
+
+---
+
+## Limitations (v1)
+
+- Text messages only — media/attachments not supported
+- Single AI provider active per tenant at a time
+- No billing or subscription management (planned for v2)
+
+---
+
+## License
+
+MIT
