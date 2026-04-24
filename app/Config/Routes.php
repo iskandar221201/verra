@@ -95,4 +95,18 @@ $routes->group('', ['filter' => ['session', 'tenant']], static function ($routes
 
     // SSE Endpoint
     $routes->get('sse/(:num)/(:segment)', 'Tenant\SseController::stream/$1/$2');
+
+    // Lead Assignment Config
+    $routes->get('lead-config', 'Tenant\LeadConfigController::index');
+    $routes->post('lead-config/update', 'Tenant\LeadConfigController::updateConfig');
+    $routes->post('lead-config/salesperson/store', 'Tenant\LeadConfigController::storeSalesperson');
+    $routes->post('lead-config/salesperson/update/(:num)', 'Tenant\LeadConfigController::updateSalesperson/$1');
+    $routes->get('lead-config/salesperson/delete/(:num)', 'Tenant\LeadConfigController::deleteSalesperson/$1');
+    $routes->get('lead-config/salesperson/activate/(:num)', 'Tenant\LeadConfigController::activateSalesperson/$1');
+    $routes->post('lead-config/salesperson/update-order', 'Tenant\LeadConfigController::updateOrder');
+    $routes->post('lead-config/fetch-groups', 'Tenant\LeadConfigController::fetchGroups');
+
+    // Lead Assignment Actions
+    $routes->post('lead-assign/assign', 'Tenant\LeadAssignmentController::assign');
+    $routes->get('lead-assign/salespersons', 'Tenant\LeadAssignmentController::getSalespersons');
 });

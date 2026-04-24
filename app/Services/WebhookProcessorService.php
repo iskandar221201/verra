@@ -70,6 +70,14 @@ class WebhookProcessorService
             'message' => $messageText,
         ]);
 
+        // Step 2.5: Auto-assign lead if enabled (first message from this customer)
+        try {
+            $leadService = new LeadAssignmentService();
+            $leadService->autoAssign($tenantId, $channelId, $waNumber, $fonnteToken);
+        } catch (\Exception $e) {
+            log_message('error', "[WebhookProcessorService] Lead auto-assign error: {$e->getMessage()}");
+        }
+
         // Step 3: Check handover keyword
         if ($this->handoverService->checkKeyword($tenantId, $messageText)) {
             // Create handover record
